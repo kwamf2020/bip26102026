@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Time Settlement - KWA</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', 'Noto Sans Malayalam', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-malayalam { font-family: 'Noto Sans Malayalam', sans-serif; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; color: black !important; font-size: 9.5pt; padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 1rem !important; }
+            .fy-body { display: block !important; }
+            table { font-size: 8.5pt; width: 100% !important; border-collapse: collapse !important; page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 3px 6px !important; }
+            .page-break { page-break-before: always; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-16 selection:bg-blue-600 selection:text-white">
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print"></div>
+
+    <!-- Top Navigation Bar with Required 5 Headers & Home Button -->
+    <header class="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-30 shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3.5">
+                <a href="index.html" class="bg-emerald-600 hover:bg-emerald-500 p-2.5 rounded-xl shadow-lg text-white transition flex items-center gap-1.5 text-xs font-bold" title="Home">
+                    <i class="fa-solid fa-house"></i> <span>Home</span>
+                </a>
+            </div>
+
+            <!-- REQUIRED 5 APP HEADERS -->
+            <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                <a href="consumer.html" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg transition border border-slate-800">Arrear letters to Consumers</a>
+                <a href="mfaulty.html" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg transition border border-slate-800">Meter faulty letters</a>
+                <a href="ots.html" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg shadow">One Time Settlement</a>
+                <a href="prerr.html" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg transition border border-slate-800">Pre RR letters</a>
+                <a href="tariff.html" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg transition border border-slate-800">Tariff Calulator</a>
+            </div>
+
+            <div class="flex items-center flex-wrap gap-2">
+                <button onclick="loadSampleData()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Demo
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+        <!-- SECTION 1: Consumer Details & OTS Policy Levers -->
+        <div class="bg-white rounded-2xl shadow-xs border border-slate-200/90 overflow-hidden no-print">
+            <div class="bg-slate-50/80 px-6 py-3.5 border-b border-slate-200/80 flex flex-wrap justify-between items-center gap-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-600"></i> 1. Consumer Profile & OTS Policy Configuration
+                </h2>
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                        <input type="checkbox" id="reconcileLedgerToggle" checked onchange="handleParamChange()" class="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
+                        <span>Auto-Reconcile with eAbacus Balance</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600">
+                        <input type="checkbox" id="autoCalcToggle" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <span>Auto-Recalculate on Change</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Consumer Name / Authority</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-building absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" id="consumerName" value="" placeholder="Enter Consumer Name" oninput="handleParamChange()" class="w-full text-sm pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Consumer No. / ID</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-hashtag absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" id="consumerNo" value="" placeholder="Enter Consumer No." oninput="handleParamChange()" class="w-full text-sm pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Consider From Date</label>
+                        <input type="date" id="fromDate" value="2015-04-01" onchange="handleParamChange()" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Consider To Date</label>
+                        <input type="date" id="toDate" value="2026-03-31" onchange="handleParamChange()" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">OTS Annual Interest Rate</label>
+                        <div class="relative">
+                            <input type="number" id="annualRate" value="12" step="0.1" min="0" oninput="handleParamChange()" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none pr-8 font-mono font-semibold text-blue-700">
+                            <span class="absolute right-3 top-2 text-xs font-bold text-slate-400">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/60 p-4 rounded-xl border border-slate-200/60">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Additional OTS Interest Waiver (%)</label>
+                        <div class="relative">
+                            <input type="number" id="interestWaiverPct" value="0" step="1" min="0" max="100" oninput="handleParamChange()" class="w-full text-sm px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none pr-8 font-mono">
+                            <span class="absolute right-3 top-1.5 text-xs font-semibold text-slate-400">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Additional Surcharge waiver (%)</label>
+                        <div class="relative">
+                            <input type="number" id="surchargeWaiverPct" value="0" step="1" min="0" max="100" oninput="handleParamChange()" class="w-full text-sm px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none pr-8 font-mono">
+                            <span class="absolute right-3 top-1.5 text-xs font-semibold text-slate-400">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Settlement Installments</label>
+                        <select id="installmentCount" onchange="handleParamChange()" class="w-full text-sm px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="1">Single Lump-Sum Payment (1x)</option>
+                            <option value="2">2 Monthly Installments</option>
+                            <option value="3">3 Monthly Installments</option>
+                            <option value="4">4 Monthly Installments</option>
+                            <option value="6">6 Monthly Installments</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">OTS Sanction Reference / Circular</label>
+                        <input type="text" id="circularRef" value="" placeholder="Enter Circular Reference" oninput="handleParamChange()" class="w-full text-sm px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Paste Data from eAbacus DCB -->
+        <div class="bg-white rounded-2xl shadow-xs border border-slate-200/90 overflow-hidden no-print">
+            <div class="bg-slate-50/80 px-6 py-3.5 border-b border-slate-200/80 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-database text-blue-600"></i> 2. Paste Data from eAbacus DCB
+                    </h2>
+                </div>
+                <button onclick="toggleImportPanel()" id="toggleImportBtn" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    <i class="fa-solid fa-chevron-up" id="importChevron"></i> <span>Hide Import Box</span>
+                </button>
+            </div>
+
+            <div id="importPanelBody" class="p-6 border-b border-slate-100">
+                <div class="flex flex-col">
+                    <div class="flex flex-wrap justify-between items-center mb-1.5 gap-2">
+                        <label class="text-xs font-semibold text-slate-700">Paste 12-Column eAbacus DCB rows</label>
+                        <span class="text-[11px] font-mono text-slate-400">Sl | Date | Bill | Rcpt | Dues | Water | Adj | OthAdj | Surchg | Fine | Paid | Bal</span>
+                    </div>
+                    <textarea id="pasteInput" rows="4" placeholder="Paste 12-column tab-separated or comma-separated eAbacus DCB rows here..." 
+                        class="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/70"></textarea>
+                    <div class="mt-2.5 flex justify-between items-center">
+                        <span id="parseDiagnostics" class="text-xs text-slate-500">Ready to validate eAbacus DCB ledger records.</span>
+                        <button onclick="parsePastedData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-check-double"></i> Validate & Import Text
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validated Raw Data Table -->
+            <div id="tableSection" class="p-6 hidden">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-md flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check"></i> <span id="recordCount">0</span> Billing Entries Loaded
+                        </span>
+                        <span class="text-xs text-slate-400" id="reconcileStatusBanner">Inline edits automatically update OTS calculations</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="addNewRawRow()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-slate-300">
+                            <i class="fa-solid fa-plus text-blue-600"></i> Add Billing Row
+                        </button>
+                        <button onclick="triggerOTSCalculation(true)" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt"></i> Recalculate OTS Now
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto max-h-72 rounded-xl border border-slate-200 shadow-2xs">
+                    <table class="w-full text-xs text-left text-slate-600">
+                        <thead class="text-[11px] uppercase bg-slate-100 text-slate-700 font-bold sticky top-0 z-10 border-b border-slate-200">
+                            <tr>
+                                <th class="px-3 py-2.5 text-center">#</th>
+                                <th class="px-3 py-2.5">Date</th>
+                                <th class="px-3 py-2.5 text-right">Dues (OB)</th>
+                                <th class="px-3 py-2.5 text-right">Water Chg (Demand)</th>
+                                <th class="px-3 py-2.5 text-right">Surcharge</th>
+                                <th class="px-3 py-2.5 text-right text-indigo-700 bg-indigo-50/60">Fine</th>
+                                <th class="px-3 py-2.5 text-right">Adj / Other</th>
+                                <th class="px-3 py-2.5 text-right">Amount Paid</th>
+                                <th class="px-3 py-2.5 text-right text-slate-900">Balance</th>
+                                <th class="px-2 py-2.5 text-center">Del</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rawTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Executive Summary Dashboard & Visual Analytics -->
+        <div id="summaryCard" class="hidden space-y-6">
+            
+            <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-2xl shadow-xl p-6 border border-slate-800 no-print">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-widest text-blue-400">Executive Settlement Summary</span>
+                            <span id="activePeriodBadge" class="text-[11px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700"></span>
+                        </div>
+                        <h2 class="text-2xl font-extrabold tracking-tight text-white mt-1">One-Time Settlement (OTS) Assessment</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="printReport('schedule')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-print"></i> Print Schedule
+                        </button>
+                        <button onclick="printReport('letter')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-envelope-open-text"></i> Print Notice (EN)
+                        </button>
+                        <button onclick="printReport('letter_ml')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-language text-sm"></i> Print Notice (മലയാളം)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/70">
+                        <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block">1. Current Balance (eAbacus)</span>
+                        <div class="text-2xl font-extrabold text-amber-400 mt-1 font-mono" id="sumCurrentBalance">₹0.00</div>
+                    </div>
+                    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/70">
+                        <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block">2. Current Fine (eAbacus)</span>
+                        <div class="text-2xl font-extrabold text-rose-400 mt-1 font-mono" id="sumCurrentFine">₹0.00</div>
+                    </div>
+                    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/70">
+                        <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block">3. OTS Principal Balance</span>
+                        <div class="text-2xl font-extrabold text-sky-400 mt-1 font-mono" id="sumOTSBalance">₹0.00</div>
+                    </div>
+                    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/70">
+                        <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block">4. Calculated OTS Fine</span>
+                        <div class="text-2xl font-extrabold text-emerald-400 mt-1 font-mono" id="sumOTSFine">₹0.00</div>
+                        <span class="text-[11px] text-slate-400" id="interestRateLabel">12% p.a.</span>
+                    </div>
+                    <div class="bg-emerald-950/50 rounded-xl p-4 border border-emerald-500/40">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-emerald-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-piggy-bank"></i> 5. Total OTS Benefit
+                            </span>
+                            <span id="benefitPctBadge" class="text-[11px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">0% Saved</span>
+                        </div>
+                        <div class="text-2xl font-extrabold text-emerald-300 mt-1 font-mono" id="sumOTSBenefit">₹0.00</div>
+                    </div>
+                    <div class="bg-blue-950/70 rounded-xl p-4 border border-blue-500/60 shadow-inner">
+                        <span class="text-xs text-blue-300 font-bold uppercase tracking-wider block flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> 6. Net Payable Amount under OTS
+                        </span>
+                        <div class="text-2xl font-extrabold text-white mt-1 font-mono" id="sumPayableOTS">₹0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts & Installments -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 no-print">
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Fine & Payable Comparison</h3>
+                    <div class="h-56 relative"><canvas id="comparisonChart"></canvas></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">FY Progressive Sum & OTS Fine</h3>
+                    <div class="h-56 relative"><canvas id="fyTrendChart"></canvas></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Installment plan</h3>
+                            <span id="installmentBadge" class="text-[11px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Lump Sum</span>
+                        </div>
+                        <div class="overflow-y-auto max-h-44 border border-slate-100 rounded-lg">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b">
+                                    <tr><th class="py-2 px-3">Inst #</th><th class="py-2 px-3">Due Date</th><th class="py-2 px-3 text-right">Amount</th></tr>
+                                </thead>
+                                <tbody id="installmentTableBody" class="divide-y divide-slate-100 font-mono text-xs"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: Detailed FY Schedules & Printable Outputs -->
+        <div id="otsReportCard" class="hidden bg-white rounded-2xl shadow-xs border border-slate-200 p-6 card">
+            <div id="printScheduleSection">
+                <div class="print-only mb-6 border-b pb-4">
+                    <h1 class="text-xl font-bold uppercase text-slate-900" id="printConsumerHeader"></h1>
+                    <p class="text-xs text-slate-600 mt-0.5">Consumer No: <span id="printConsumerNo" class="font-mono font-bold"></span></p>
+                </div>
+                <div id="fySchedulesContainer" class="space-y-4"></div>
+            </div>
+
+            <div id="printLetterSection" class="hidden">
+                <div class="max-w-3xl mx-auto p-4 text-slate-900 space-y-5">
+                    <h1 class="text-lg font-extrabold uppercase">Kerala Water Authority - OTS Notice</h1>
+                    <p>Consumer: <span id="letterConsumerName"></span> (<span id="letterConsumerNo"></span>)</p>
+                </div>
+            </div>
+
+            <div id="printLetterMalayalamSection" class="hidden font-malayalam">
+                <div class="max-w-3xl mx-auto p-4 text-slate-900 space-y-5">
+                    <h1 class="text-lg font-extrabold">കേരള വാട്ടർ അതോറിറ്റി - OTS നോട്ടീസ്</h1>
+                    <p>ഉപഭോക്താവ്: <span id="mlLetterConsumerName"></span> (<span id="mlLetterConsumerNo"></span>)</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const MONTH_SHORT_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let rawRecords = [], globalFyMap = {}, globalFySummaries = [], lastMetrics = null, comparisonChartInstance = null, fyTrendChartInstance = null;
+
+        window.onload = function() {
+            const now = new Date();
+            const todayDDMMYYYY = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+            if (document.getElementById('printDate')) document.getElementById('printDate').innerText = todayDDMMYYYY;
+        };
+
+        function toggleImportPanel() {
+            const body = document.getElementById('importPanelBody');
+            const chevron = document.getElementById('importChevron');
+            body.classList.toggle('hidden');
+            chevron.className = body.classList.contains('hidden') ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up';
+        }
+
+        function loadSampleData() {
+            document.getElementById('consumerName').value = "Secretary Grama Panchayath";
+            document.getElementById('consumerNo').value = "KZC/1829/N";
+            rawRecords = [
+                { date: "07-Jul-2015", ob: 0, demand: 3368, surcharge: 0, fine: 0, adj: -66, receipt: 0, total: 3302 },
+                { date: "16-Sep-2015", ob: 3302, demand: 1954, surcharge: 0, fine: 31, adj: -1818, receipt: 0, total: 3469 }
+            ];
+            renderRawTable();
+            document.getElementById('tableSection').classList.remove('hidden');
+            triggerOTSCalculation(false);
+        }
+
+        function resetApp() {
+            rawRecords = [];
+            document.getElementById('tableSection').classList.add('hidden');
+            document.getElementById('summaryCard').classList.add('hidden');
+            document.getElementById('otsReportCard').classList.add('hidden');
+        }
+
+        function handleParamChange() {
+            if (document.getElementById('autoCalcToggle').checked && rawRecords.length > 0) {
+                triggerOTSCalculation(false);
+            }
+        }
+
+        function renderRawTable() {
+            const tbody = document.getElementById('rawTableBody');
+            document.getElementById('recordCount').innerText = rawRecords.length;
+            tbody.innerHTML = rawRecords.map((r, i) => `
+                <tr>
+                    <td class="px-3 py-1.5 text-center">${i + 1}</td>
+                    <td class="px-2 py-1.5">${r.date}</td>
+                    <td class="px-2 py-1.5 text-right font-mono">${r.total}</td>
+                </tr>
+            `).join('');
+        }
+
+        function triggerOTSCalculation() {
+            document.getElementById('summaryCard').classList.remove('hidden');
+            document.getElementById('otsReportCard').classList.remove('hidden');
+        }
+
+        function formatCurrency(val) { return '₹' + (val || 0).toFixed(2); }
+    </script>
+</body>
+</html>
